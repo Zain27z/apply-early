@@ -8,6 +8,7 @@ import 'job_service.dart';
 import 'job_storage.dart';
 import 'models/saved_alert.dart';
 import 'services/saved_alerts_service.dart';
+import 'saved_alerts_screen.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -337,7 +338,29 @@ class _JobAppState extends State<JobApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Apply Early")),
+      appBar: AppBar(
+        title: const Text("Apply Early"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.list_alt),
+            tooltip: "Saved Alerts",
+            onPressed: () async {
+              final alert = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SavedAlertsScreen()),
+              );
+              if (alert != null && alert is SavedAlert) {
+                setState(() {
+                  _searchCtrl.text = alert.query;
+                  _selectedCountry = alert.location;
+                  _dateFilter = alert.timeFilter;
+                });
+                _runJobCheck();
+              }
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(14),
