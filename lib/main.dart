@@ -6,6 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'job_service.dart';
 import 'job_storage.dart';
+import 'models/saved_alert.dart';
+import 'services/saved_alerts_service.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -15,7 +17,7 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
 
   const AndroidInitializationSettings androidInit =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+      AndroidInitializationSettings('ic_stat_notify');
   const InitializationSettings initSettings =
       InitializationSettings(android: androidInit);
   await flutterLocalNotificationsPlugin.initialize(initSettings);
@@ -34,7 +36,7 @@ class ApplyFirst extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "ApplyFirst",
+      title: "ApplyEarly",
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: ThemeData(
@@ -106,9 +108,12 @@ class _JobAppState extends State<JobApp> {
         if (_dateFilter == 'all' || j.created == null) return true;
         final diff = now.difference(j.created!);
         switch (_dateFilter) {
-          case '1d': return diff.inHours <= 24;
-          case '3d': return diff.inDays <= 3;
-          case '7d': return diff.inDays <= 7;
+          case '1d':
+            return diff.inHours <= 24;
+          case '3d':
+            return diff.inDays <= 3;
+          case '7d':
+            return diff.inDays <= 7;
         }
         return true;
       }).toList();
@@ -127,6 +132,7 @@ class _JobAppState extends State<JobApp> {
               "Job Alerts",
               importance: Importance.max,
               priority: Priority.high,
+              icon: 'ic_stat_notify',
             ),
           ),
         );
@@ -154,7 +160,31 @@ class _JobAppState extends State<JobApp> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  // Gradient Button
+  Future<void> _saveAlert() async {
+    final query = _searchCtrl.text.trim();
+    if (query.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter a job title before saving.")),
+      );
+      return;
+    }
+
+    final alert = SavedAlert(
+      query: query,
+      location: _selectedCountry,
+      timeFilter: _dateFilter,
+    );
+
+    await SavedAlertsService().saveAlert(alert);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Alert saved for \"$query\" ✅"),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   Widget _gradientButton(VoidCallback onTap, String label) {
     return GestureDetector(
       onTap: onTap,
@@ -252,7 +282,6 @@ class _JobAppState extends State<JobApp> {
     );
   }
 
-  // ✅ Adaptive readable card text
   Widget _jobCard(Job j) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -317,6 +346,12 @@ class _JobAppState extends State<JobApp> {
               _buildSearchBar(),
               const SizedBox(height: 12),
               _buildFilters(),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: _gradientButton(_saveAlert, "Save Alert")),
+                ],
+              ),
               const SizedBox(height: 10),
               if (_loading) const LinearProgressIndicator(),
               Expanded(
